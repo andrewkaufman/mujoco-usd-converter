@@ -43,9 +43,13 @@ class TestScene(ConverterTestCase):
         self.assertTrue(scene.GetAttribute("newton:gravityEnabled").HasAuthoredValue())
         self.assertEqual(scene.GetAttribute("newton:gravityEnabled").Get(), False)
 
-        # Check that all MJC properties are authored
+        # Check that all non-deprecated MJC properties are authored
+        deprecated_mjc_properties = {"mjc:flag:gravity", "mjc:option:iterations", "mjc:option:timestep"}
         for property in scene.GetPropertiesInNamespace("mjc"):
-            self.assertTrue(property.HasAuthoredValue(), f"Property {property.GetName()} is not authored")
+            if property.GetName() in deprecated_mjc_properties:
+                self.assertFalse(property.HasAuthoredValue(), f"Deprecated property {property.GetName()} should not be authored")
+            else:
+                self.assertTrue(property.HasAuthoredValue(), f"Property {property.GetName()} is not authored")
 
         # Test all flag attributes have been authored and have expected values
         # Disable flags (defaults to enabled=1, we set them to disabled=0)
@@ -60,7 +64,7 @@ class TestScene(ConverterTestCase):
             "mjc:flag:eulerdamp",
             "mjc:flag:filterparent",
             "mjc:flag:frictionloss",
-            "mjc:flag:gravity",
+            # mjc:flag:gravity deprecated in favor of newton:gravityEnabled
             "mjc:flag:island",
             "mjc:flag:limit",
             "mjc:flag:midphase",
@@ -97,7 +101,7 @@ class TestScene(ConverterTestCase):
         self.assertAlmostEqual(scene.GetAttribute("mjc:option:impratio").Get(), 0.5)
         self.assertEqual(scene.GetAttribute("mjc:option:integrator").Get(), "rk4")
         self.assertEqual(scene.GetAttribute("mjc:option:jacobian").Get(), "sparse")
-        self.assertEqual(scene.GetAttribute("mjc:option:iterations").Get(), 200)
+        # mjc:option:iterations deprecated in favor of newton:maxSolverIterations
         self.assertEqual(scene.GetAttribute("mjc:option:ls_iterations").Get(), 100)
         self.assertAlmostEqual(scene.GetAttribute("mjc:option:ls_tolerance").Get(), 0.02)
         self.assertTrue(Gf.IsClose(scene.GetAttribute("mjc:option:magnetic").Get(), Gf.Vec3d(0.1, 0.2, 0.3), 1e-6))
@@ -110,7 +114,7 @@ class TestScene(ConverterTestCase):
         self.assertEqual(scene.GetAttribute("mjc:option:sdf_initpoints").Get(), 60)
         self.assertEqual(scene.GetAttribute("mjc:option:sdf_iterations").Get(), 20)
         self.assertEqual(scene.GetAttribute("mjc:option:solver").Get(), "cg")
-        self.assertAlmostEqual(scene.GetAttribute("mjc:option:timestep").Get(), 0.01)
+        # mjc:option:timestep deprecated in favor of newton:timeStepsPerSecond
         self.assertAlmostEqual(scene.GetAttribute("mjc:option:tolerance").Get(), 1e-6)
         self.assertAlmostEqual(scene.GetAttribute("mjc:option:viscosity").Get(), 0.1)
         self.assertTrue(Gf.IsClose(scene.GetAttribute("mjc:option:wind").Get(), Gf.Vec3d(1, 2, 3), 1e-6))
@@ -174,7 +178,7 @@ class TestScene(ConverterTestCase):
             "mjc:flag:eulerdamp",
             "mjc:flag:filterparent",
             "mjc:flag:frictionloss",
-            "mjc:flag:gravity",
+            # mjc:flag:gravity deprecated in favor of newton:gravityEnabled
             "mjc:flag:island",
             "mjc:flag:limit",
             "mjc:flag:midphase",

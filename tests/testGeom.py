@@ -215,14 +215,15 @@ class TestGeom(ConverterTestCase):
         self.assertTrue(prim.GetAttribute("mjc:inertia").HasAuthoredValue())
         self.assertEqual(prim.GetAttribute("mjc:inertia").Get(), "convex")
 
-        # Check that mjc:maxhullvert attribute is authored and has the correct value
-        self.assertTrue(prim.GetAttribute("mjc:maxhullvert").HasAuthoredValue())
-        self.assertEqual(prim.GetAttribute("mjc:maxhullvert").Get(), 100)
+        # mjc:maxhullvert is deprecated, newton:maxHullVertices should be authored
+        self.assertFalse(prim.GetAttribute("mjc:maxhullvert").HasAuthoredValue())
+        self.assertTrue(prim.GetAttribute("newton:maxHullVertices").HasAuthoredValue())
+        self.assertEqual(prim.GetAttribute("newton:maxHullVertices").Get(), 100)
 
-        # Check that all MJC properties are authored
+        # Check that all non-deprecated MJC properties are authored
+        deprecated_collision_props = {"mjc:shellinertia", "mjc:gap", "mjc:margin", "mjc:maxhullvert"}
         for property in prim.GetPropertiesInNamespace("mjc"):
-            # skip shellinertia as it is not applicable to mesh colliders
-            if property.GetName() == "mjc:shellinertia":
+            if property.GetName() in deprecated_collision_props:
                 self.assertFalse(property.HasAuthoredValue(), f"Property {property.GetName()} should not be authored")
             else:
                 self.assertTrue(property.HasAuthoredValue(), f"Property {property.GetName()} is not authored")
@@ -246,8 +247,8 @@ class TestGeom(ConverterTestCase):
         self.assertEqual(prim.GetAttribute("mjc:maxhullvert").Get(), -1)
         self.assertTrue(prim.GetAttribute("mjc:condim").HasAuthoredValue())
         self.assertEqual(prim.GetAttribute("mjc:condim").Get(), 4)
-        self.assertTrue(prim.GetAttribute("mjc:gap").HasAuthoredValue())
-        self.assertEqual(prim.GetAttribute("mjc:gap").Get(), 0.02)
+        # mjc:gap deprecated, newton:contactGap should be used
+        self.assertFalse(prim.GetAttribute("mjc:gap").HasAuthoredValue())
 
         # Check default collision properties do not apply the schema
         prim: Usd.Prim = self.stage.GetPrimAtPath("/geoms/Geometry/geom_body/default_mesh_collision_properties")
@@ -316,15 +317,17 @@ class TestGeom(ConverterTestCase):
         self.assertTrue(prim.HasAPI(UsdPhysics.CollisionAPI))
         self.assertTrue(prim.HasAPI("MjcCollisionAPI"))
 
-        # Check that all MJC properties are authored
+        # Check that all non-deprecated MJC properties are authored
+        deprecated_collision_props = {"mjc:gap", "mjc:margin"}
         for property in prim.GetPropertiesInNamespace("mjc"):
-            self.assertTrue(property.HasAuthoredValue(), f"Property {property.GetName()} is not authored")
+            if property.GetName() in deprecated_collision_props:
+                self.assertFalse(property.HasAuthoredValue(), f"Deprecated property {property.GetName()} should not be authored")
+            else:
+                self.assertTrue(property.HasAuthoredValue(), f"Property {property.GetName()} is not authored")
 
-        # Check that all MJC properties have the correct values
+        # Check that all non-deprecated MJC properties have the correct values
         self.assertEqual(prim.GetAttribute("mjc:condim").Get(), 4)
-        self.assertEqual(prim.GetAttribute("mjc:gap").Get(), 0.02)
         self.assertEqual(prim.GetAttribute("mjc:group").Get(), 1)
-        self.assertEqual(prim.GetAttribute("mjc:margin").Get(), 0.03)
         self.assertEqual(prim.GetAttribute("mjc:priority").Get(), 2)
         self.assertEqual(prim.GetAttribute("mjc:shellinertia").Get(), True)
         self.assertEqual(prim.GetAttribute("mjc:solimp").Get(), [0.95, 0.99, 0.001, 0.5, 2.0])

@@ -36,9 +36,9 @@ def convert_tendon(parent: Usd.Prim, name: str, tendon: mujoco.MjsTendon, data: 
     tendon_prim: Usd.Prim = parent.GetStage().DefinePrim(parent.GetPath().AppendChild(name))
     tendon_prim.SetTypeName("MjcTendon")
 
-    set_schema_attribute(tendon_prim, "mjc:stiffness", tendon.stiffness)
+    set_schema_attribute(tendon_prim, "mjc:stiffness", tendon.stiffness[0])
     set_schema_attribute(tendon_prim, "mjc:springlength", Vt.DoubleArray(tendon.springlength))
-    set_schema_attribute(tendon_prim, "mjc:damping", tendon.damping)
+    set_schema_attribute(tendon_prim, "mjc:damping", tendon.damping[0])
     set_schema_attribute(tendon_prim, "mjc:frictionloss", tendon.frictionloss)
     set_schema_attribute(tendon_prim, "mjc:solreffriction", Vt.DoubleArray(tendon.solref_friction))
     set_schema_attribute(tendon_prim, "mjc:solimpfriction", Vt.DoubleArray(tendon.solimp_friction))

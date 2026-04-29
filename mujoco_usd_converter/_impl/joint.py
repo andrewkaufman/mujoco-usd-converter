@@ -79,7 +79,7 @@ def apply_mjc_joint_api(prim: Usd.Prim, joint: mujoco.MjsJoint):
     set_schema_attribute(prim, "mjc:actuatorfrcrange:max", joint.actfrcrange[1])
     set_schema_attribute(prim, "mjc:actuatorgravcomp", bool(joint.actgravcomp))
     set_schema_attribute(prim, "mjc:armature", joint.armature)
-    set_schema_attribute(prim, "mjc:damping", joint.damping)
+    set_schema_attribute(prim, "mjc:damping", joint.damping[0])
     set_schema_attribute(prim, "mjc:frictionloss", joint.frictionloss)
     set_schema_attribute(prim, "mjc:group", joint.group)
     set_schema_attribute(prim, "mjc:margin", joint.margin)
@@ -90,7 +90,7 @@ def apply_mjc_joint_api(prim: Usd.Prim, joint: mujoco.MjsJoint):
     set_schema_attribute(prim, "mjc:solreflimit", list(joint.solref_limit))
     set_schema_attribute(prim, "mjc:springdamper", list(joint.springdamper))
     set_schema_attribute(prim, "mjc:springref", joint.springref)
-    set_schema_attribute(prim, "mjc:stiffness", joint.stiffness)
+    set_schema_attribute(prim, "mjc:stiffness", joint.stiffness[0])
 
 
 def is_limited(joint: mujoco.MjsJoint, data: ConversionData) -> bool:

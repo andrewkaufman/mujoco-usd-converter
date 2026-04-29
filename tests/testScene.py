@@ -64,6 +64,7 @@ class TestScene(ConverterTestCase):
             "mjc:flag:island",
             "mjc:flag:limit",
             "mjc:flag:midphase",
+            "mjc:flag:multiccd",
             "mjc:flag:nativeccd",
             "mjc:flag:refsafe",
             "mjc:flag:sensor",
@@ -80,7 +81,6 @@ class TestScene(ConverterTestCase):
             "mjc:flag:energy",
             "mjc:flag:fwdinv",
             "mjc:flag:invdiscrete",
-            "mjc:flag:multiccd",
             "mjc:flag:override",
         ]
 
@@ -158,8 +158,15 @@ class TestScene(ConverterTestCase):
         self.assertAlmostEqual(physics_scene.GetGravityMagnitudeAttr().Get(), 9.81, 5)
 
         # Check that only MJC properties without a default value are authored
+        # Some properties are overridden by the converter to match the data spec (remove this when the schema is updated)
+        overridden_properties = [
+            "mjc:flag:multiccd",
+        ]
         for property in scene.GetPropertiesInNamespace("mjc"):
-            self.assertFalse(property.HasAuthoredValue(), f"Property {property.GetName()} should not be authored")
+            if property.GetName() in overridden_properties:
+                self.assertTrue(property.HasAuthoredValue(), f"Property {property.GetName()} should be authored")
+            else:
+                self.assertFalse(property.HasAuthoredValue(), f"Property {property.GetName()} should not be authored")
 
         # Test that default values are not authored but still available via schema defaults
         # Most flag attributes should not be authored since they match schema defaults
@@ -178,6 +185,7 @@ class TestScene(ConverterTestCase):
             "mjc:flag:island",
             "mjc:flag:limit",
             "mjc:flag:midphase",
+            "mjc:flag:multiccd",
             "mjc:flag:nativeccd",
             "mjc:flag:refsafe",
             "mjc:flag:sensor",
@@ -187,13 +195,14 @@ class TestScene(ConverterTestCase):
 
         for attr_name in default_enabled_flags:
             attr: Usd.Attribute = scene.GetAttribute(attr_name)
-            self.assertEqual(attr.Get(), True, f"Default attribute {attr_name} should still return True via schema default")
+            # Some properties are overridden by the converter to match the data spec (remove this when the schema is updated)
+            if attr_name not in overridden_properties:
+                self.assertEqual(attr.Get(), True, f"Default attribute {attr_name} should still return True via schema default")
 
         default_disabled_flags = [
             "mjc:flag:energy",
             "mjc:flag:fwdinv",
             "mjc:flag:invdiscrete",
-            "mjc:flag:multiccd",
             "mjc:flag:override",
         ]
 

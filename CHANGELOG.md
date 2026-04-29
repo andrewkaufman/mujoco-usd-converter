@@ -1,3 +1,16 @@
+# 0.2.0
+
+## Fixes
+
+- Fixed mesh/texture conversion for mujoco's `attach` assets
+- Fixed runtime compliance with mujoco 3.8.0
+  - Force-author `mjc:flag:multiccd` since the mjc schema property does not match the runtime data model in 3.8.0
+  - Stiffness & damping in joints and tendons is now authored from the linear term of mujoco's new polynomial force profiles, as the mjc schema only exposes the linear coefficients.
+
+## Dependencies
+
+- Updated to `mujoco>=3.8.0`
+
 # 0.1.0
 
 ## Fixes

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import usdex.core
-from pxr import Gf, Usd, UsdPhysics, Vt
+from pxr import Gf, Tf, Usd, UsdPhysics, Vt
 
 from .data import ConversionData, Tokens
 from .numpy import convert_vec3d
@@ -67,7 +67,16 @@ def convert_scene(data: ConversionData):
     set_schema_attribute(scene_prim, "mjc:flag:energy", is_enabled(1 << 1, data))
     set_schema_attribute(scene_prim, "mjc:flag:fwdinv", is_enabled(1 << 2, data))
     set_schema_attribute(scene_prim, "mjc:flag:invdiscrete", is_enabled(1 << 3, data))
-    set_schema_attribute(scene_prim, "mjc:flag:multiccd", is_enabled(1 << 4, data))
+
+    # multiccd should be enabled by default, but the schema was not changed to reflect this
+    # We set it to the data spec value regardless of the schema default
+    # If the default schema value is ever changed to enable multiccd, remove the workaround and use set_schema_attribute
+    attr = scene_prim.GetAttribute("mjc:flag:multiccd")
+    default = attr.Get()
+    if default:
+        Tf.Warn("mjc:flag:multiccd default value is fixed, revert the workaround for the incorrect schema default")
+    attr.Set(is_enabled(1 << 4, data))
+
     set_schema_attribute(scene_prim, "mjc:flag:override", is_enabled(1 << 0, data))
 
     actuator_groups = [i for i in range(31) if data.spec.option.disableactuator & (1 << i)]

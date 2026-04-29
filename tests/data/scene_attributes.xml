@@ -31,7 +31,7 @@
           eulerdamp="disable" autoreset="disable"
           nativeccd="disable" island="disable"
           energy="enable" fwdinv="enable"
-          invdiscrete="enable" multiccd="enable"
+          invdiscrete="enable" multiccd="disable"
           override="enable"/>
   </option>
 

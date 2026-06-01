@@ -199,6 +199,9 @@ class TestGeom(ConverterTestCase):
         self.assertTrue(prim.HasAPI("MjcCollisionAPI"))
         self.assertTrue(prim.GetAttribute("mjc:shellinertia").HasAuthoredValue())
         self.assertTrue(prim.GetAttribute("mjc:shellinertia").Get())
+        self.assertTrue(prim.HasAPI("NewtonMassAPI"))
+        self.assertTrue(prim.GetAttribute("newton:massModel").HasAuthoredValue())
+        self.assertEqual(prim.GetAttribute("newton:massModel").Get(), "shell")
 
     def test_mjc_mesh_collision_schema(self):
         prim: Usd.Prim = self.stage.GetPrimAtPath("/geoms/Geometry/geom_body/all_mesh_collision_properties")
@@ -264,6 +267,9 @@ class TestGeom(ConverterTestCase):
         self.assertTrue(prim.HasAPI("MjcMeshCollisionAPI"))
         self.assertTrue(prim.GetAttribute("mjc:inertia").HasAuthoredValue())
         self.assertEqual(prim.GetAttribute("mjc:inertia").Get(), "shell")
+        self.assertTrue(prim.HasAPI("NewtonMassAPI"))
+        self.assertTrue(prim.GetAttribute("newton:massModel").HasAuthoredValue())
+        self.assertEqual(prim.GetAttribute("newton:massModel").Get(), "shell")
         self.assertFalse(prim.GetAttribute("mjc:maxhullvert").HasAuthoredValue())
         self.assertEqual(prim.GetAttribute("mjc:maxhullvert").Get(), -1)
         self.assertFalse(prim.GetAttribute("mjc:shellinertia").HasAuthoredValue())
@@ -295,6 +301,7 @@ class TestGeom(ConverterTestCase):
         prim: Usd.Prim = self.stage.GetPrimAtPath("/geoms/Geometry/geom_body/default_collider")
         self.assertTrue(prim.HasAPI(UsdPhysics.CollisionAPI))
         self.assertTrue(prim.HasAPI("MjcCollisionAPI"))
+        self.assertFalse(prim.HasAPI("NewtonMassAPI"))
 
         # Check that no MJC properties are authored
         for property in prim.GetPropertiesInNamespace("mjc"):
@@ -327,6 +334,8 @@ class TestGeom(ConverterTestCase):
         self.assertEqual(prim.GetAttribute("mjc:margin").Get(), 0.03)
         self.assertEqual(prim.GetAttribute("mjc:priority").Get(), 2)
         self.assertEqual(prim.GetAttribute("mjc:shellinertia").Get(), True)
+        self.assertTrue(prim.HasAPI("NewtonMassAPI"))
+        self.assertEqual(prim.GetAttribute("newton:massModel").Get(), "shell")
         self.assertEqual(prim.GetAttribute("mjc:solimp").Get(), [0.95, 0.99, 0.001, 0.5, 2.0])
         self.assertEqual(prim.GetAttribute("mjc:solmix").Get(), 0.9)
         self.assertEqual(prim.GetAttribute("mjc:solref").Get(), [0.05, 1.0])

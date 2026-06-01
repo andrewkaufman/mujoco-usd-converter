@@ -4,7 +4,7 @@
 import mujoco
 import numpy as np
 import usdex.core
-from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, Vt
 
 from .data import ConversionData, Tokens
 from .geom import convert_geom, get_geom_name
@@ -45,6 +45,7 @@ def convert_body(parent: Usd.Prim, name: str, body: mujoco.MjsBody, data: Conver
             site_over: Usd.Prim = data.content[Tokens.Physics].OverridePrim(site_prim.GetPath())
             data.references[Tokens.PhysicsSites][site.name] = site_over
             site_over.ApplyAPI("MjcSiteAPI")
+            site_over.ApplyAPI("NewtonSiteAPI")
             set_schema_attribute(site_over, "mjc:group", site.group)
 
     if body != data.spec.worldbody:
@@ -72,8 +73,12 @@ def convert_body(parent: Usd.Prim, name: str, body: mujoco.MjsBody, data: Conver
             # In MuJoCo this represents a body with no rotational inertia (typically a static base),
             # and in USD the mass alone is sufficient — the physics engine will handle it
             if inertia != Gf.Vec3f(0, 0, 0):
+                # Decomposed path kept as fallback for apps that don't support newton:inertia
                 mass_api.CreatePrincipalAxesAttr().Set(quat)
                 mass_api.CreateDiagonalInertiaAttr().Set(inertia)
+                if not np.isnan(body.fullinertia[0]):
+                    body_over.ApplyAPI("NewtonMassAPI")
+                    set_schema_attribute(body_over, "newton:inertia", Vt.DoubleArray.FromNumpy(body.fullinertia))
 
         convert_joints(parent=body_over, body=body, data=data)
 

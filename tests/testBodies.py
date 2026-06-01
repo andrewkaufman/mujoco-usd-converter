@@ -53,6 +53,7 @@ class TestBodies(ConverterTestCase):
     def test_explicit_inertia_principal_axes(self):
         principal_prim = self.stage.GetPrimAtPath("/bodies/Geometry/explicit_inertia_principal")
         self.assertTrue(principal_prim.HasAPI(UsdPhysics.MassAPI))
+        self.assertFalse(principal_prim.HasAPI("NewtonMassAPI"))
         mass_api = UsdPhysics.MassAPI(principal_prim)
         self.assertAlmostEqual(mass_api.GetMassAttr().Get(), 2.0)
         self.assertEqual(mass_api.GetCenterOfMassAttr().Get(), Gf.Vec3f(0.1, 0.2, 0.3))
@@ -71,6 +72,12 @@ class TestBodies(ConverterTestCase):
     def test_explicit_inertia_full_matrix(self):
         full_prim = self.stage.GetPrimAtPath("/bodies/Geometry/explicit_inertia_full")
         self.assertTrue(full_prim.HasAPI(UsdPhysics.MassAPI))
+        self.assertTrue(full_prim.HasAPI("NewtonMassAPI"))
+        newton_inertia = full_prim.GetAttribute("newton:inertia").Get()
+        self.assertTrue(newton_inertia is not None)
+        expected = [0.4, 0.3, 0.2, 0.05, 0.02, 0.01]
+        for actual, exp in zip(newton_inertia, expected):
+            self.assertAlmostEqual(actual, exp, places=6)
         mass_api = UsdPhysics.MassAPI(full_prim)
         self.assertAlmostEqual(mass_api.GetMassAttr().Get(), 3.0)
         self.assertEqual(mass_api.GetCenterOfMassAttr().Get(), Gf.Vec3f(0.1, 0.2, 0.3))
@@ -106,6 +113,7 @@ class TestBodies(ConverterTestCase):
         regular_prim: Usd.Prim = self.stage.GetPrimAtPath("/bodies/Geometry/regular_dynamic")
         self.assertTrue(regular_prim.HasAPI(UsdPhysics.RigidBodyAPI))
         self.assertFalse(regular_prim.HasAPI(UsdPhysics.MassAPI))
+        self.assertFalse(regular_prim.HasAPI("NewtonMassAPI"))
         self.assertFalse(regular_prim.HasAttribute("mjc:body:gravcomp"))
 
     def test_gravity_compensated(self):
@@ -117,6 +125,7 @@ class TestBodies(ConverterTestCase):
         zero_inertia_prim: Usd.Prim = self.stage.GetPrimAtPath("/bodies/Geometry/zero_inertia")
         self.assertTrue(zero_inertia_prim.HasAPI(UsdPhysics.RigidBodyAPI))
         self.assertTrue(zero_inertia_prim.HasAPI(UsdPhysics.MassAPI))
+        self.assertFalse(zero_inertia_prim.HasAPI("NewtonMassAPI"))
         mass_api = UsdPhysics.MassAPI(zero_inertia_prim)
         self.assertAlmostEqual(mass_api.GetMassAttr().Get(), 2.0)
         self.assertEqual(mass_api.GetCenterOfMassAttr().Get(), Gf.Vec3f(0.1, 0.2, 0.3))

@@ -45,6 +45,7 @@ def convert_body(parent: Usd.Prim, name: str, body: mujoco.MjsBody, data: Conver
             site_over: Usd.Prim = data.content[Tokens.Physics].OverridePrim(site_prim.GetPath())
             data.references[Tokens.PhysicsSites][site.name] = site_over
             site_over.ApplyAPI("MjcSiteAPI")
+            site_over.ApplyAPI("NewtonSiteAPI")
             set_schema_attribute(site_over, "mjc:group", site.group)
 
     if body != data.spec.worldbody:
@@ -68,6 +69,8 @@ def convert_body(parent: Usd.Prim, name: str, body: mujoco.MjsBody, data: Conver
                 inertia = convert_vec3d(body.inertia)
             else:
                 quat, inertia = extract_inertia(body.fullinertia)
+                body_over.ApplyAPI("NewtonMassAPI")
+                set_schema_attribute(body_over, "newton:inertia", [float(x) for x in body.fullinertia])
             # If the inertia is zero, don't set the principal axes or diagonal inertia
             # In MuJoCo this represents a body with no rotational inertia (typically a static base),
             # and in USD the mass alone is sufficient — the physics engine will handle it

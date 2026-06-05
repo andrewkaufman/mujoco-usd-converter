@@ -1,3 +1,17 @@
+# Unreleased
+
+## Features
+
+- Apply `NewtonSiteAPI` on site prims alongside `MjcSiteAPI`
+- Apply `NewtonMassAPI` with `newton:massModel = "shell"` on collision geoms with shell inertia
+- Author `newton:inertia` compact tensor on bodies with full inertia matrices
+- Author `newton:contactStiffness` and `newton:contactDamping` on physics materials (computed from MuJoCo solref)
+
+## Dependencies
+
+- Updated to `newton-usd-schemas>=0.3.1`
+- Locked `mujoco` to `>=3.8.1,<3.9` to avoid breaking changes in 3.9.x
+
 # 0.2.0
 
 ## Fixes

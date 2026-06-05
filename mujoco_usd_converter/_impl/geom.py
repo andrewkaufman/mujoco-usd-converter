@@ -12,6 +12,17 @@ from .utils import get_fromto_vectors, set_purpose, set_schema_attribute, set_tr
 __all__ = ["convert_geom", "get_geom_name"]
 
 
+def solref_to_stiffness_damping(solref) -> tuple[float, float]:
+    """Convert MuJoCo solref (timeconst, dampratio) to Newton stiffness and damping."""
+    timeconst = float(solref[0])
+    dampratio = float(solref[1])
+    if timeconst < 0.0 and dampratio < 0.0:
+        return -timeconst, -dampratio
+    if timeconst <= 0.0 or dampratio <= 0.0:
+        return float("-inf"), float("-inf")
+    return 1.0 / (timeconst * timeconst * dampratio * dampratio), 2.0 / timeconst
+
+
 def get_geom_name(geom: mujoco.MjsGeom) -> str:
     if geom.name:
         return geom.name
@@ -314,7 +325,10 @@ def apply_physics(geom_prim: Usd.Prim, geom: mujoco.MjsGeom, data: ConversionDat
     set_schema_attribute(geom_over, "mjc:priority", geom.priority)
     set_schema_attribute(geom_over, "mjc:solimp", list(geom.solimp))
     set_schema_attribute(geom_over, "mjc:solmix", geom.solmix)
-    set_schema_attribute(geom_over, "mjc:solref", list(geom.solref))
+    # Always author mjc:solref since the conversion to ke/kd can be lossy
+    # solref compatible runtimes should prefer mjc:solref on the shape
+    # rather than falling through to material-level ke/kd.
+    geom_over.GetAttribute("mjc:solref").Set(list(geom.solref))
 
     if geom.type == mujoco.mjtGeom.mjGEOM_MESH:
         mesh_collider: UsdPhysics.MeshCollisionAPI = UsdPhysics.MeshCollisionAPI.Apply(geom_over)
@@ -323,12 +337,18 @@ def apply_physics(geom_prim: Usd.Prim, geom: mujoco.MjsGeom, data: ConversionDat
         if inertia := get_inertia_token(geom, data):
             geom_over.ApplyAPI("MjcMeshCollisionAPI")
             set_schema_attribute(geom_over, "mjc:inertia", inertia)
+            if inertia == "shell":
+                geom_over.ApplyAPI("NewtonMassAPI")
+                set_schema_attribute(geom_over, "newton:massModel", "shell")
         if maxhullvert := get_maxhullvert(geom, data):
             geom_over.ApplyAPI("MjcMeshCollisionAPI")
             set_schema_attribute(geom_over, "newton:maxHullVertices", maxhullvert)
             set_schema_attribute(geom_over, "mjc:maxhullvert", maxhullvert)
     else:
         set_schema_attribute(geom_over, "mjc:shellinertia", bool(geom.typeinertia == mujoco.mjtGeomInertia.mjINERTIA_SHELL))
+        if geom.typeinertia == mujoco.mjtGeomInertia.mjINERTIA_SHELL:
+            geom_over.ApplyAPI("NewtonMassAPI")
+            set_schema_attribute(geom_over, "newton:massModel", "shell")
 
     if not np.isnan(geom.mass):
         geom_mass: UsdPhysics.MassAPI = UsdPhysics.MassAPI.Apply(geom_over)
@@ -349,14 +369,15 @@ def acquire_physics_material(geom: mujoco.MjsGeom, data: ConversionData) -> UsdS
     sliding_friction = geom.friction[0]
     torsional_friction = geom.friction[1]
     rolling_friction = geom.friction[2]
-    material_hash = Gf.Vec3f(sliding_friction, torsional_friction, rolling_friction)
+    ke, kd = solref_to_stiffness_damping(geom.solref)
+    material_hash = (sliding_friction, torsional_friction, rolling_friction, ke, kd)
 
     # check for an existing physics material with the same values
     physics_scope = data.content[Tokens.Physics].GetDefaultPrim().GetChild(Tokens.Physics)
     for child in physics_scope.GetChildren():
         if child.HasAPI(UsdPhysics.MaterialAPI):
             physics_material: UsdPhysics.MaterialAPI = UsdPhysics.MaterialAPI(child.GetPrim())
-            if Gf.IsClose(material_hash, hash_physics_material(physics_material), 1e-6):
+            if _material_hash_close(material_hash, hash_physics_material(physics_material)):
                 return UsdShade.Material(physics_material)
 
     return create_physics_material(physics_scope, geom, data)
@@ -366,14 +387,16 @@ def create_physics_material(physics_materials: Usd.Prim, geom: mujoco.MjsGeom, d
     sliding_friction = geom.friction[0]
     torsional_friction = geom.friction[1]
     rolling_friction = geom.friction[2]
+    ke, kd = solref_to_stiffness_damping(geom.solref)
 
     name = data.name_cache.getPrimName(physics_materials, "PhysicsMaterial")
     material: UsdShade.Material = usdex.core.definePhysicsMaterial(physics_materials, name, dynamicFriction=sliding_friction)
 
-    # Apply NewtonMaterialAPI and MjcMaterialAPI for torsional and rolling friction
     material.GetPrim().ApplyAPI("NewtonMaterialAPI")
     set_schema_attribute(material.GetPrim(), "newton:torsionalFriction", torsional_friction)
     set_schema_attribute(material.GetPrim(), "newton:rollingFriction", rolling_friction)
+    set_schema_attribute(material.GetPrim(), "newton:contactStiffness", ke)
+    set_schema_attribute(material.GetPrim(), "newton:contactDamping", kd)
     material.GetPrim().ApplyAPI("MjcMaterialAPI")
     set_schema_attribute(material.GetPrim(), "mjc:torsionalfriction", torsional_friction)
     set_schema_attribute(material.GetPrim(), "mjc:rollingfriction", rolling_friction)
@@ -381,12 +404,17 @@ def create_physics_material(physics_materials: Usd.Prim, geom: mujoco.MjsGeom, d
     return material
 
 
-def hash_physics_material(material: UsdPhysics.MaterialAPI) -> Gf.Vec3f:
-    # we know that all materials in the physics layer have the values authored, so we can just get them
+def hash_physics_material(material: UsdPhysics.MaterialAPI) -> tuple[float, ...]:
     sliding_friction = material.GetDynamicFrictionAttr().Get()
     torsional_friction = material.GetPrim().GetAttribute("mjc:torsionalfriction").Get()
     rolling_friction = material.GetPrim().GetAttribute("mjc:rollingfriction").Get()
-    return Gf.Vec3f(sliding_friction, torsional_friction, rolling_friction)
+    ke = material.GetPrim().GetAttribute("newton:contactStiffness").Get()
+    kd = material.GetPrim().GetAttribute("newton:contactDamping").Get()
+    return (sliding_friction, torsional_friction, rolling_friction, ke, kd)
+
+
+def _material_hash_close(a: tuple[float, ...], b: tuple[float, ...], tol: float = 1e-6) -> bool:
+    return len(a) == len(b) and all(x == y or abs(x - y) < tol for x, y in zip(a, b))
 
 
 def get_inertia_token(geom: mujoco.MjsGeom, data: ConversionData) -> str:
